@@ -2,6 +2,7 @@ package draylar.identity.mixin;
 
 import draylar.identity.Identity;
 import draylar.identity.registry.Components;
+import io.github.ladysnake.pal.VanillaAbilities;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
@@ -21,7 +22,7 @@ public abstract class ServerPlayerEntityMixin {
 
     @Shadow public abstract boolean isSpectator();
 
-    @Shadow public abstract void addChatMessage(Text message, boolean bl);
+    @Shadow public abstract void sendMessage(Text message, boolean actionBar);
 
     @Inject(
             method = "onDeath",
@@ -40,14 +41,28 @@ public abstract class ServerPlayerEntityMixin {
                 // todo: this option might be server-only given that this method isn't[?] called on the client
                 // send revoke message to player if they aren't in creative and the config option is on
                 if(Identity.CONFIG.overlayIdentityRevokes) {
-                    addChatMessage(
+                    sendMessage(
                             new TranslatableText(
                                     "identity.revoke_entity",
-                                    new TranslatableText(IdentityType.getTranslationKey()).asFormattedString()
+                                    new TranslatableText(IdentityType.getTranslationKey()).asString()
                             ), true
                     );
                 }
             }
+        }
+    }
+
+    @Inject(
+            method = "onSpawn",
+            at = @At("HEAD")
+    )
+    private void onSpawn(CallbackInfo ci) {
+        if(Identity.hasFlyingPermissions((ServerPlayerEntity) (Object) this)) {
+            if(!Identity.ABILITY_SOURCE.grants((ServerPlayerEntity) (Object) this, VanillaAbilities.ALLOW_FLYING)) {
+                Identity.ABILITY_SOURCE.grantTo((ServerPlayerEntity) (Object) this, VanillaAbilities.ALLOW_FLYING);
+            }
+
+            Identity.ABILITY_SOURCE.grantTo((ServerPlayerEntity) (Object) this, VanillaAbilities.FLYING);
         }
     }
 }

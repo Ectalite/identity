@@ -1,6 +1,7 @@
 package draylar.identity.api.model;
 
 import draylar.identity.impl.NearbySongAccessor;
+import draylar.identity.mixin.ParrotEntityAccessor;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -8,6 +9,8 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,7 +58,7 @@ public class EntityUpdaters {
     public static void init() {
         // register specific entity animation handling
         EntityUpdaters.register(EntityType.BAT, (player, bat) -> {
-            if(player.onGround) {
+            if(player.isOnGround()) {
                 bat.setRoosting(true);
             } else {
                 bat.setRoosting(false);
@@ -63,24 +66,38 @@ public class EntityUpdaters {
         });
 
         EntityUpdaters.register(EntityType.PARROT, (player, parrot) -> {
-            if(player.onGround && ((NearbySongAccessor) player).isNearbySongPlaying()) {
+            if(player.isOnGround() && ((NearbySongAccessor) player).isNearbySongPlaying()) {
                 parrot.setNearbySongPlaying(player.getBlockPos(), true);
                 parrot.setSitting(true);
-                parrot.onGround = true;
-            } else if (player.onGround) {
+                parrot.setOnGround(true);
+            } else if (player.isOnGround()) {
                 parrot.setNearbySongPlaying(player.getBlockPos(), false);
                 parrot.setSitting(true);
-                parrot.onGround = true;
+                parrot.setOnGround(true);
+                parrot.prevFlapProgress = 0;
+                parrot.flapProgress = 0;
+                parrot.maxWingDeviation = 0;
+                parrot.prevMaxWingDeviation = 0;
             } else {
                 parrot.setNearbySongPlaying(player.getBlockPos(), false);
                 parrot.setSitting(false);
-                parrot.onGround = false;
+                parrot.setOnGround(false);
+                parrot.setInSittingPose(false);
+                ((ParrotEntityAccessor) parrot).callFlapWings();
             }
         });
 
         EntityUpdaters.register(EntityType.ENDER_DRAGON, (player, dragon) -> {
-            dragon.field_7030 += 0.01F;
-            dragon.field_7019 = dragon.field_7030;
+            dragon.wingPosition += 0.01F;
+            dragon.prevWingPosition = dragon.wingPosition;
+        });
+
+        EntityUpdaters.register(EntityType.ENDERMAN, (player, enderman) -> {
+            ItemStack heldStack = player.getMainHandStack();
+
+            if(heldStack.getItem() instanceof BlockItem) {
+                enderman.setCarriedBlock(((BlockItem) heldStack.getItem()).getBlock().getDefaultState());
+            }
         });
     }
 }
